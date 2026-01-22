@@ -1,0 +1,32 @@
+{
+    "x": {
+        "mean": 525.0,
+        "scale": 301.5895389432465,
+        "type": "standard"
+    },
+    "y": {
+        "mean": 0.0,
+        "scale": 101.78057687361877,
+        "type": "standard"
+    },
+    "load_mag": {
+        "mean": 105451.98618242187,
+        "scale": 18936.68218544064,
+        "type": "standard"
+    },
+    "global_deflection": {
+        "mean": 5.5,
+        "scale": 2.8722813232690143,
+        "type": "standard"
+    },
+    "fc": {
+        "mean": -24.8969215259552,
+        "scale": 1.479670329561971,
+        "type": "standard"
+    },
+    "fy": {
+        "mean": 314.6490105895996,
+        "scale": 10.155588948750545,
+        "type": "standard"
+    }
+}

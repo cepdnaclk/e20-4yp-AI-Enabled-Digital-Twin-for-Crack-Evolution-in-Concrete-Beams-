@@ -1,0 +1,239 @@
+🧩 Complete Setup Guide 
+
+AI-Enabled Digital Twin for Crack Evolution in Concrete Beams
+
+This guide explains every step, including 3D beam creation in Unity.
+
+1️⃣ Install Python (REQUIRED VERSION)
+    🔴 IMPORTANT
+
+    Use Python 3.10.x
+    ❌ Do NOT use Python 3.12
+
+2️⃣ Clone the GitHub Repository
+    git clone https://github.com/<your-username>/<repo-name>.git
+    cd <repo-name>
+
+
+    Expected structure:
+
+    code/
+    unity/
+    requirements.txt
+    README.md
+    .gitignore
+
+
+3️⃣ Create Virtual Environment
+    python -m venv venv
+
+
+    Activate:
+
+    Windows
+
+    venv\Scripts\activate
+
+
+    You should see:
+
+    (venv)
+
+4️⃣ Install Dependencies
+    pip install --upgrade pip
+    pip install -r requirements.txt
+
+
+5️⃣ Run Python Server
+    cd code
+    uvicorn server:app --host 0.0.0.0 --port 8000
+
+
+    Expected:
+
+    Uvicorn running on http://0.0.0.0:8000
+
+
+    ⚠️ Keep this terminal open.
+
+
+6️ Open Unity Project
+
+    Open Unity Hub
+
+    Click Open → Add project from disk
+
+    Select the unity/ folder
+
+    Click Open
+
+    Unity will rebuild the Library/ folder automatically.
+
+
+7️⃣ Install NativeWebSocket (REQUIRED)
+
+    🔗 Official repository:
+    https://github.com/endel/NativeWebSocket
+
+    Installation steps:
+
+    Click Code → Download ZIP
+
+    Extract the ZIP
+
+    Copy folder:
+
+    NativeWebSocket/
+
+
+    Paste into:
+
+    unity/Assets/
+
+
+    Wait for Unity to recompile.
+
+
+
+8️⃣ Create the Beam GameObject
+
+    In Hierarchy, right-click
+    → Create Empty
+
+    Rename it:
+
+    BeamDigitalTwin
+
+9️⃣ Add Required Components
+
+    Select BeamDigitalTwin, then add:
+
+    Component	            How
+    MeshFilter	            Add Component → MeshFilter
+    MeshRenderer	        Add Component → MeshRenderer
+    BoxCollider	            Add Component → BoxCollider
+    GridMeshGenerator	    Add Component → Script
+    DigitalTwinVisualizer	Add Component → Script
+
+    ⚠️ Do NOT assign a mesh manually — the mesh is generated procedurally.
+
+🔟 Create the Beam Material
+
+    Right-click in Assets
+
+    Create → Material
+
+    Name it:
+
+    MyColorMat
+
+
+1️⃣1️⃣ Create Vertex Color Shader
+
+    Right-click in Assets
+
+    Create → Shader → Unlit Shader
+
+    Name it:
+
+    VertexColorShader
+
+    Replace shader code with:
+    Shader "Custom/VertexColor"
+    {
+        SubShader
+        {
+            Tags { "RenderType"="Opaque" }
+            Pass
+            {
+                CGPROGRAM
+                #pragma vertex vert
+                #pragma fragment frag
+                #include "UnityCG.cginc"
+
+                struct appdata
+                {
+                    float4 vertex : POSITION;
+                    float4 color : COLOR;
+                };
+
+                struct v2f
+                {
+                    float4 pos : SV_POSITION;
+                    float4 color : COLOR;
+                };
+
+                v2f vert (appdata v)
+                {
+                    v2f o;
+                    o.pos = UnityObjectToClipPos(v.vertex);
+                    o.color = v.color;
+                    return o;
+                }
+
+                fixed4 frag (v2f i) : SV_Target
+                {
+                    return i.color;
+                }
+                ENDCG
+            }
+        }
+    }
+
+
+    Save the file.
+
+1️⃣2️⃣ Assign Material & Shader
+
+    Select MyColorMat
+
+    Set:
+
+    Shader → Custom → VertexColor
+
+
+    Select BeamDigitalTwin
+
+    Drag MyColorMat into:
+
+    MeshRenderer → Materials → Element 0
+
+
+1️⃣3️⃣ Configure DigitalTwinVisualizer
+
+    Select BeamDigitalTwin → DigitalTwinVisualizer
+
+    Set:
+
+    Field	            Value
+    Color Gradient	    Green → Yellow → Red
+    Sensitivity	        30–60
+    Damage Text	        Assign UI Text
+    RUL Text	        Assign UI Text
+    Time Slider	        Optional
+
+
+1️⃣4️⃣ Start Simulation
+    Python (already running):
+    Uvicorn running on http://0.0.0.0:8000
+
+    Unity:
+
+    Press ▶ Play
+
+    ✅ Expected Output
+    Python terminal:
+    ✅ Unity connected
+
+    Unity Console:
+    🟢 WebSocket connected to Python
+
+    Scene:
+
+    Beam appears
+
+    Starts blue
+
+    Gradually changes: (This is not working on my lap)
+    🟢 → 🟡 → 🔴
+
