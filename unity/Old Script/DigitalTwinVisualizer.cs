@@ -37,15 +37,15 @@ public class DigitalTwinVisualizer : MonoBehaviour
 
     [Header("Visualization")]
     public Gradient colorGradient;
-    
-    [Range(0.1f, 5.0f)] 
+
+    [Range(0.1f, 5.0f)]
     public float sensitivity = 1.0f;
 
     [Header("Crack Visualization")]
     [Tooltip("If stress (0.0 to 1.0) goes above this value, show cracks.")]
     [Range(0.0f, 1.0f)]
     public float crackThreshold = 0.85f; // New Setting
-    
+
     [Tooltip("The color of the cracked area (usually Black).")]
     public Color crackColor = Color.black; // New Setting
 
@@ -124,9 +124,9 @@ public class DigitalTwinVisualizer : MonoBehaviour
         {
             float physX = 0;
             if (centerIsZero)
-                physX = vertices[i].x * beamLengthMM;         
+                physX = vertices[i].x * beamLengthMM;
             else
-                physX = (vertices[i].x + 0.5f) * beamLengthMM; 
+                physX = (vertices[i].x + 0.5f) * beamLengthMM;
 
             float physY = vertices[i].y * beamHeightMM;
 
