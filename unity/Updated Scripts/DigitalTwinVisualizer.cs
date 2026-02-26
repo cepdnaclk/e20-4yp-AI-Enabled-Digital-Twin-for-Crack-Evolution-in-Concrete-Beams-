@@ -1,4 +1,5 @@
 using UnityEngine;
+using TMPro; // ✅ for BeamText (TextMeshPro)
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
@@ -36,6 +37,34 @@ public class DigitalTwinVisualizer : MonoBehaviour
 
     [Tooltip("Crack influence radius around load point (in local XZ). Only used if useLoadPoint = true.")]
     [Range(0.01f, 2f)] public float loadRadius = 0.25f;
+
+    // ======================================================
+    // ✅ ADDED: Manual crack location (type in Inspector)
+    // ======================================================
+    [Header("Manual Crack Location (Type Here)")]
+    public bool useManualCrack = true;
+
+    [Tooltip("Crack position along beam length (0..1). 0=left end, 1=right end")]
+    [Range(0f, 1f)] public float manualCrackU = 0.5f;
+
+    [Tooltip("Crack position along height (0..1). 0=bottom, 1=top")]
+    [Range(0f, 1f)] public float manualCrackV = 0.1f;
+
+    [Tooltip("How wide the crack influence is (0..1 in normalized space).")]
+    [Range(0.001f, 0.5f)] public float manualCrackRadius = 0.05f;
+
+    [Tooltip("How strong the manual crack is (0..1).")]
+    [Range(0f, 1f)] public float manualCrackSeverity = 1.0f;
+
+    [Tooltip("Higher = sharper/thinner crack")]
+    [Range(0.1f, 10f)] public float manualCrackSharpness = 3.0f;
+
+    // ======================================================
+    // ✅ ADDED: BeamText support (drag your BeamText here)
+    // ======================================================
+    [Header("Beam Text (Drag BeamText Here)")]
+    public TMP_Text beamText;
+    public bool showDebugText = true;
 
     private Mesh mesh;
     private Vector3[] baseVertices;
@@ -79,6 +108,7 @@ public class DigitalTwinVisualizer : MonoBehaviour
     {
         if (mesh == null) return;
         ApplyDeformationAndColor();
+        UpdateBeamText(); // ✅ show text
     }
 
     void ApplyDeformationAndColor()
@@ -139,9 +169,7 @@ public class DigitalTwinVisualizer : MonoBehaviour
             // Stronger preference to bottom (tension zone)
             bottomWeight = Mathf.Pow(Mathf.Clamp01(bottomWeight), bottomBias);
 
-            // Make crack grow upward with load:
-            // at low load -> only very bottom affected,
-            // at high load -> higher region becomes affected.
+            // Make crack grow upward with load
             float grow = Mathf.Lerp(0f, upwardGrowth, loadRatio);
             float grownBottom = Mathf.Clamp01(bottomWeight + grow * (1f - bottomWeight) * bottomWeight);
 
@@ -158,11 +186,32 @@ public class DigitalTwinVisualizer : MonoBehaviour
                 loadWeight = Mathf.Clamp01(near);
             }
 
-            // Final “crack intensity”
-            // - bend -> where bending moment is high (mid-span)
-            // - grownBottom -> tension zone that starts at bottom
-            // - loadWeight -> optional focusing under the load point
+            // Original intensity (KEEP)
             float intensity = bend * grownBottom * loadWeight * loadRatio;
+
+            // ======================================================
+            // ✅ MANUAL CRACK LOCATION OVERRIDE (ANYWHERE)
+            // ======================================================
+            if (useManualCrack)
+            {
+                // u along length (0..1)
+                float u = x01;
+
+                // v along height (0..1)
+                float vv = Mathf.InverseLerp(meshMinY, meshMaxY, baseVertices[i].y);
+
+                float du = u - manualCrackU;
+                float dv = vv - manualCrackV;
+                float dist = Mathf.Sqrt(du * du + dv * dv);
+
+                float r = Mathf.Max(0.0001f, manualCrackRadius);
+                float t = Mathf.Clamp01(1f - (dist / r));      // 1 at center, 0 at edge
+                t = Mathf.Pow(t, manualCrackSharpness);        // sharp
+                t *= manualCrackSeverity;                      // severity
+
+                // Combine with your existing intensity
+                intensity = Mathf.Max(intensity, t);
+            }
 
             colors[i] = Color.Lerp(Color.green, Color.red, Mathf.Clamp01(intensity));
         }
@@ -171,5 +220,20 @@ public class DigitalTwinVisualizer : MonoBehaviour
         mesh.colors = colors;
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
+    }
+
+    void UpdateBeamText()
+    {
+        if (!showDebugText) return;
+        if (beamText == null) return;
+
+        float loadRatio = Mathf.Clamp01(loadVal / maxLoadN);
+
+        beamText.text =
+            $"Load: {loadVal:F0} N\n" +
+            $"Load Ratio: {loadRatio:F2}\n" +
+            $"Manual Crack: {(useManualCrack ? "ON" : "OFF")}\n" +
+            $"Crack U: {manualCrackU:F2}  V: {manualCrackV:F2}\n" +
+            $"Radius: {manualCrackRadius:F3}  Sev: {manualCrackSeverity:F2}";
     }
 }
