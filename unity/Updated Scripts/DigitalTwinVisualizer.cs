@@ -1,5 +1,5 @@
 using UnityEngine;
-using TMPro; // ✅ for BeamText (TextMeshPro)
+using TMPro; // ✅ for TextMeshPro
 
 [RequireComponent(typeof(MeshFilter))]
 [RequireComponent(typeof(MeshRenderer))]
@@ -39,7 +39,7 @@ public class DigitalTwinVisualizer : MonoBehaviour
     [Range(0.01f, 2f)] public float loadRadius = 0.25f;
 
     // ======================================================
-    // ✅ ADDED: Manual crack location (type in Inspector)
+    // ✅ Manual crack location (type in Inspector)
     // ======================================================
     [Header("Manual Crack Location (Type Here)")]
     public bool useManualCrack = true;
@@ -60,11 +60,23 @@ public class DigitalTwinVisualizer : MonoBehaviour
     [Range(0.1f, 10f)] public float manualCrackSharpness = 3.0f;
 
     // ======================================================
-    // ✅ ADDED: BeamText support (drag your BeamText here)
+    // ✅ BeamText support (drag your BeamText here)
     // ======================================================
     [Header("Beam Text (Drag BeamText Here)")]
     public TMP_Text beamText;
     public bool showDebugText = true;
+
+    // ======================================================
+    // ✅ Station table data (for Excel-like window script)
+    // ======================================================
+    [Header("Station Points (for Table)")]
+    [Range(2, 50)] public int segments = 10;
+
+    [Header("Beam Properties for Stress/Strain (Simple Beam Theory)")]
+    public float beamLength_m = 1.0f;   // L
+    public float beamWidth_m = 0.15f;   // b
+    public float beamDepth_m = 0.25f;   // h
+    public float E_Pa = 25e9f;          // Young's modulus (Pa)
 
     private Mesh mesh;
     private Vector3[] baseVertices;
@@ -73,6 +85,18 @@ public class DigitalTwinVisualizer : MonoBehaviour
 
     private float meshMinA, meshMaxA;
     private float meshMinY, meshMaxY;
+
+    // station arrays
+    private float[] stationX;
+    private float[] stationStress;
+    private float[] stationStrain;
+    private float[] stationDisp;
+
+    // ✅ Exposed for StationExcelTableUI
+    public float[] UI_stationX => stationX;
+    public float[] UI_stationStress => stationStress;
+    public float[] UI_stationStrain => stationStrain;
+    public float[] UI_stationDisp => stationDisp;
 
     void Start()
     {
@@ -102,13 +126,83 @@ public class DigitalTwinVisualizer : MonoBehaviour
             meshMinY = Mathf.Min(meshMinY, y);
             meshMaxY = Mathf.Max(meshMaxY, y);
         }
+
+        EnsureStations();
+        ComputeStations(); // fill initial arrays
     }
 
     void Update()
     {
         if (mesh == null) return;
+
         ApplyDeformationAndColor();
-        UpdateBeamText(); // ✅ show text
+        UpdateBeamText(); // ✅ original text (unchanged)
+
+        // keep station arrays updated for your “Excel window”
+        ComputeStations();
+    }
+
+    void EnsureStations()
+    {
+        if (stationX != null && stationX.Length == segments) return;
+
+        stationX = new float[segments];
+        stationStress = new float[segments];
+        stationStrain = new float[segments];
+        stationDisp = new float[segments];
+    }
+
+    // called by StationExcelTableUI
+    public void ForceComputeStationsForUI()
+    {
+        ComputeStations();
+    }
+
+    void ComputeStations()
+    {
+        EnsureStations();
+
+        float L = Mathf.Max(0.0001f, beamLength_m);
+        float P = Mathf.Max(0f, loadVal);
+
+        float b = Mathf.Max(0.0001f, beamWidth_m);
+        float h = Mathf.Max(0.0001f, beamDepth_m);
+
+        // I = b*h^3/12
+        float I = (b * h * h * h) / 12f;
+        float y = h / 2f;
+
+        float loadRatio = Mathf.Clamp01(loadVal / maxLoadN);
+
+        // same deflection scaling you already use (visual)
+        float realDeflectionMM = loadRatio * maxRealDeflectionMM;
+        float deflectionMeters = (realDeflectionMM / 1000f) * visualExaggeration;
+
+        float scaleY = transform.localScale.y;
+        if (Mathf.Abs(scaleY) > 1e-6f)
+            deflectionMeters /= scaleY;
+
+        for (int i = 0; i < segments; i++)
+        {
+            float x = (i + 0.5f) / segments * L;
+            stationX[i] = x;
+
+            // Simply supported beam with mid-point load
+            float M = (x <= L * 0.5f) ? (P * x * 0.5f) : (P * (L - x) * 0.5f);
+
+            float sigma = (I > 1e-12f) ? (M * y / I) : 0f; // Pa
+            stationStress[i] = sigma;
+
+            stationStrain[i] = (E_Pa > 1e-6f) ? (sigma / E_Pa) : 0f;
+
+            // displacement shape (0 at ends, 1 at center)
+            float x01 = x / L;
+            float xi = (x01 - 0.5f) * 2f;
+            float bend = 1f - xi * xi;
+            if (bend < 0f) bend = 0f;
+
+            stationDisp[i] = bend * deflectionMeters; // meters
+        }
     }
 
     void ApplyDeformationAndColor()
@@ -194,10 +288,7 @@ public class DigitalTwinVisualizer : MonoBehaviour
             // ======================================================
             if (useManualCrack)
             {
-                // u along length (0..1)
                 float u = x01;
-
-                // v along height (0..1)
                 float vv = Mathf.InverseLerp(meshMinY, meshMaxY, baseVertices[i].y);
 
                 float du = u - manualCrackU;
@@ -205,11 +296,10 @@ public class DigitalTwinVisualizer : MonoBehaviour
                 float dist = Mathf.Sqrt(du * du + dv * dv);
 
                 float r = Mathf.Max(0.0001f, manualCrackRadius);
-                float t = Mathf.Clamp01(1f - (dist / r));      // 1 at center, 0 at edge
-                t = Mathf.Pow(t, manualCrackSharpness);        // sharp
-                t *= manualCrackSeverity;                      // severity
+                float t = Mathf.Clamp01(1f - (dist / r));
+                t = Mathf.Pow(t, manualCrackSharpness);
+                t *= manualCrackSeverity;
 
-                // Combine with your existing intensity
                 intensity = Mathf.Max(intensity, t);
             }
 
