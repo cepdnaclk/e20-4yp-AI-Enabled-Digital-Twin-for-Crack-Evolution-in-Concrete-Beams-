@@ -17,4 +17,14 @@ The current prototype demonstrates the feasibility of linking AI inference with 
 - Dr. Upul Jayasinghe, [upuljm@eng.pdn.ac.lk](mailto:upuljm@eng.pdn.ac.lk)
 - Dr. J.A.S.C. Jayasinghe, [supunj@eng.pdn.ac.lk](mailto:supunj@eng.pdn.ac.lk)
 
+#### Links
+
+[//]: # ( NOTE: EDIT THIS LINKS WITH YOUR REPO DETAILS )
+
+- [Project Repository](https://github.com/cepdnaclk/e20-4yp-AI-Enabled-Digital-Twin-for-Crack-Evolution-in-Concrete-Beams-)
+- [Project Page](http://ai-digital-twin-crack-monitoring-ve.vercel.app)
+- [Department of Computer Engineering](http://www.ce.pdn.ac.lk/)
+- [University of Peradeniya](https://eng.pdn.ac.lk/)
+
+
 
